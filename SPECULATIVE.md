@@ -57,3 +57,22 @@ model would *decode* at the effective speed of a ~1T one — accuracy unchanged.
 > Bonus finding, straight from the load log: `kleidiai: no kernel for tensor type q4_K` — K2's
 > K-quant tensors bypass KleidiAI entirely (kernels exist only for Q4_0/Q8_0), which is exactly
 > the gap the hand-written SMMLA K-quant kernel fills.
+
+## K3 (2.8T) addendum — and why you need the stack, not one lever
+
+Tried the same experiment on **Kimi K3 (2.8T, IQ1_S, 554 GB)** on the same 660 GB VM. Result:
+
+- **Acceptance ≈ 19.6%** — essentially identical to K2's 18.4%. The speculation *mechanism*
+  transfers to K3: the n-gram draft accepts code tokens at the same rate.
+- **But no valid speedup** — K3's 554 GB leaves only ~106 GB of non-model RAM, and speculative
+  decoding's verify step (experts for γ+1 positions per pass) plus the draft cache exceed that
+  headroom, so the box **pages weights from disk**. Throughput collapsed to ~0.35 tok/s — a
+  **memory-capacity failure, not a speculation failure** (raw: `bench/results/speculative_k3_thrash.txt`).
+
+**This is the key result:** no single lever runs "2.8T like 1T."
+- **K2 (comfortable headroom):** speculation works cleanly → **1.66× accuracy-free.**
+- **K3 (no headroom):** you must **first shrink the footprint** (FGEQ / expert-pruning) to free
+  RAM, *then* layer speculation on top.
+
+Compression (to fit *with headroom*) and speculation (for accuracy-free speed) are
+**complementary and both required** for the 2.8-trillion-parameter model. That's the roadmap.

@@ -1,0 +1,5 @@
+K3 speculative attempt (IQ1_S, 554GB on 660GB box):
+24.07.188.039 I n_accept     = 94
+24.07.188.040 I accept       = 19.583%
+24.07.188.048 I common_perf_print: prompt eval time =  450151.03 ms /   157 tokens ( 2867.20 ms per token,     0.35 tokens per second)
+mem: 622G cache, 20G free of 660G
