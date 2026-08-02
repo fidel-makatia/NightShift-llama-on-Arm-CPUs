@@ -1,5 +1,7 @@
 # Speculative decoding on Arm CPU — measured on a trillion-parameter model
 
+![speculative decoding result](pics/speculative-k2.png)
+
 **Result: 1.66× accuracy-free speedup on Kimi K2 (1.04T) via prompt-lookup speculative
 decoding, on one Azure Cobalt 100 VM (Arm Neoverse-N2), CPU only.** Temperature 0 → the output
 is byte-for-byte identical to plain decoding, so this is pure speed at zero accuracy cost.
