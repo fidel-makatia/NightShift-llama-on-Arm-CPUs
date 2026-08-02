@@ -35,6 +35,9 @@ it — it's a stack:
    $\alpha = 1 - D_{\mathrm{TV}}(p_{\text{target}}, q_{\text{draft}})$. **Key insight:** on a
    bandwidth-bound CPU the verify of $\gamma{+}1$ tokens is nearly free (weights read once), so the
    full geometric speedup lands — speculation is a *better* fit for CPU than GPU.
+   **✅ Measured: [1.66× accuracy-free speedup on Kimi K2 (1.04T)](SPECULATIVE.md)** — 10.3 → 17.2
+   tok/s on Arm CPU, per-forward-pass time *unchanged* (96.9 → 96.1 ms), with a naive drafter at
+   18% acceptance. The floor, not the ceiling — better drafting → 2–3×.
 2. **[FGEQ](fgeq/FGEQ.md)** — Frequency-Graded Expert Quantization: allocate bits by measured
    routing frequency → less RAM at equal precision, or more precision at equal RAM.
    ([`fgeq/fgeq_sim.py`](fgeq/fgeq_sim.py) — feasibility simulation on real routing data.)
@@ -52,6 +55,7 @@ bash bench/bench_maverick.sh
 ```
 
 ## Status
-Maverick benchmark: **measured**. FGEQ: **design + simulation** (not a shipped codec).
-Speculative/MTP decoding: **in progress** — prototyping the acceptance rate $\alpha$ and real
-speedup on a trillion-parameter model.
+Maverick benchmark: **measured** (22 tok/s). Speculative decoding: **measured** — 1.66×
+accuracy-free on K2 (1.04T), theory confirmed on-silicon ([SPECULATIVE.md](SPECULATIVE.md)).
+FGEQ: **design + simulation** (not a shipped codec). Next: a matched draft / K3 MTP head to push
+acceptance toward 2–3×.

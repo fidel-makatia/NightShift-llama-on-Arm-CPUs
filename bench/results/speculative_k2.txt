@@ -1,0 +1,13 @@
+0.39.715.804 I n_drafted    = 0
+0.39.715.806 I t_draft      = 2.18 ms, inf us per token, 0.00 tokens per second
+0.39.715.807 I n_accept     = 0
+0.39.715.808 I accept       = nan%
+0.39.715.816 I common_perf_print: prompt eval time =    8564.35 ms /   148 tokens (   57.87 ms per token,    17.28 tokens per second)
+0.39.715.817 I common_perf_print:        eval time =   24816.56 ms /   256 runs   (   96.94 ms per token,    10.32 tokens per second)
+=== SPEC ===
+0.46.117.759 I n_drafted    = 310
+0.46.117.760 I t_draft      = 2.50 ms, 8.07 us per token, 123950.42 tokens per second
+0.46.117.762 I n_accept     = 57
+0.46.117.765 I accept       = 18.387%
+0.46.117.773 I common_perf_print: prompt eval time =   24306.56 ms /   501 tokens (   48.52 ms per token,    20.61 tokens per second)
+0.46.117.774 I common_perf_print:        eval time =   14989.41 ms /   156 runs   (   96.09 ms per token,    10.41 tokens per second)
