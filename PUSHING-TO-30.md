@@ -77,10 +77,12 @@ Wiring MTP into the CPU speculative loop is implementation TODO (not done here).
 ## Where this sits vs the public K3 landscape (verified 2026-08)
 
 - **WASTE** ([sqliteai/waste](https://github.com/sqliteai/waste)) — NVMe expert-streaming + 3-bit
-  residual VQ (982 GB), ~0.3 tok/s on a 64 GB Mac. Targets machines that *can't* hold the model, so
-  it is storage-bound by design.
-- **vLLM + DSpark** ([vLLM K3 blog](https://vllm.ai/blog/2026-07-27-k3)) — 118→370 tok/s, but on
-  16× NVIDIA GB300 GPUs. Not Arm CPU.
+  residual VQ (982 GB), **0.45–0.62 tok/s** on a 64 GB M5 Pro Mac. Targets machines that *can't* hold
+  the model, so it is storage-bound by design. (Its 3-bit VQ is codebook-gather — likely subject to
+  the same NEON compute wall measured in #1.)
+- **vLLM + DSpark** ([vLLM K3 blog](https://vllm.ai/blog/2026-07-27-k3)) — 111/118 → 331/**370 tok/s**
+  (TP8/TP16), via a block-diffusion speculative head, on **16× NVIDIA GB300 GPUs**. Not Arm CPU; the
+  blog describes no CPU/Arm64 backend.
 - **NightShift (this work)** — runs the *full* K3 **RAM-resident on one Arm CPU node** at a stable
   2.2 tok/s (the RAM budget is what buys the ~7× over consumer streaming), and is the only one to
   **measure why CPU K3 is slow** (the iq1_s compute wall) and turn that into a compression-for-speed
