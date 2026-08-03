@@ -1,0 +1,17 @@
+Qwen3-30B-A3B-Instruct-2507 (30B total, 3B active, UD-Q4_K_XL, 17.7 GB)
+Azure Cobalt 100 (E96ps_v6, Neoverse-N2), CPU only, temp 0, n=160.
+Format: [ Prompt t/s | Generation t/s ]  from k3-fork llama-cli.
+
+threads=32  ::  Prompt 129.5  |  Generation 44.3   <-- peak
+threads=48  ::  Prompt 150.7  |  Generation 42.7
+threads=64  ::  Prompt 139.2  |  Generation 36.1
+threads=96  ::  Prompt 124.0  |  Generation  4.7   <-- cross-NUMA collapse (2 nodes)
+
+RESULT: 44.3 tok/s generation, above the 30 tok/s target, on a frontier-quality
+3B-active MoE. Confirms the roofline thesis: on CPU, ACTIVE params set speed, not total
+size. Optimal at 32 threads on ONE NUMA node; spanning both nodes (96 threads) collapses
+throughput for a memory-light model (remote-node expert reads dominate).
+
+Effective bandwidth during generation: ~3B active x ~0.5 bytes/param (Q4) = ~1.5 GB/token;
+at 44.3 tok/s that is ~66 GB/s effective — only ~16% of the measured 420 GB/s STREAM peak.
+Generation is gather/latency-bound (scattered MoE expert reads), not streaming-bound.

@@ -6,6 +6,11 @@
 Sister project to [NightShift (Kimi K2/K3 on Arm)](https://github.com/fidel-makatia/NightShift-a-trillion-parameter-AI-engineer-on-Arm-CPUs).
 This repo is the Llama + compression/acceleration research track.
 
+> **New:** [**Pushing K3 toward 30 tok/s — four experiments, honestly scored**](PUSHING-TO-30.md).
+> A 3B-active MoE hits **44 tok/s** on the same Arm CPU (#4); the real K3 wall is measured to be
+> **compression-vs-compute** (iq1_s decodes 27× slower than q4_K, #1); and FGEQ turns that into a
+> speed lever. Includes a verified comparison to WASTE and vLLM/DSpark.
+
 ## Result so far: a flagship 400B Llama runs at 22 tok/s on an Arm CPU
 
 **Llama 4 Maverick** (400B total, mixture-of-experts, **17B active/token**) on one Azure

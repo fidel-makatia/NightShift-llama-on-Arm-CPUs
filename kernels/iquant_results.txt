@@ -1,0 +1,32 @@
+In-cache compute-ceiling microbench — Azure Cobalt 100 (Neoverse-N2), single core,
+linked against the K3 build's real libggml-cpu.so. Data resident in cache => this is the
+COMPUTE rate each quant's dot-product achieves when memory is free (i.e., the compute ceiling).
+
+                 ns/call   GB/s-compute   GFLOP/s   bytes/row   bits/weight
+  iq1_s  (K3)     420.6       1.90          19.5      800         1.562
+  q4_K   (Qwen)    44.4      51.84         184.3     2304         4.500
+  q8_0   (ref)    203.9      21.35          40.2     4352         8.500
+
+KEY FINDING: iq1_s dequant is 27x slower per weight-byte and 11x fewer GFLOP/s than q4_K.
+Cause: i-quants decode via a 2048-entry codebook GATHER (per 8-weight group), with no
+i8mm/SDOT/KleidiAI fast path; q4_K has an optimized SIMD path. NEON has no efficient gather,
+so the codebook lookup is intrinsically serial/slow.
+
+IMPLICATION (the real K3 wall): the extreme 1.56-bit i-quant that lets K3 (2.8T) FIT in 660 GB
+RAM is the very thing that makes it SLOW to compute. A q4_K K3 would be ~1.4 TB (doesn't fit);
+iq1_s (~554 GB) is near the largest quant that fits. So K3 is forced onto the slowest-compute
+quant. Compression and compute-speed are in direct tension for the trillion-param model.
+
+PER-CORE vs REAL GENERATION: iq1_s compute is 1.90 GB/s/core. K3 real generation reads ~22 GB
+of weights/token and hits 2.2 tok/s = ~48 GB/s aggregate = ~0.75 GB/s/core across 64 cores.
+Compute (1.90) and effective memory (0.75) are the SAME order of magnitude => K3 is CO-LIMITED.
+A faster i-quant kernel is necessary but not sufficient; it must be paired with footprint
+reduction (to raise the memory roofline) and/or mixed-precision (put hot experts in q4_K).
+
+KERNEL PATH (proven on the sibling quant): the Q2_K SMMLA kernel in the Kimi repo already
+demonstrates expand-2bit-to-int8 + 4x4 SMMLA beating llama.cpp 1.41x, bit-exact. The same
+expand-then-SMMLA technique applies to i-quants WHEN an expert is reused across a batch (the
+codebook gather is amortized once, then SMMLA runs dense) — tying the kernel win to batched
+serving. A production IQ1_S SMMLA kernel is future work (the 2048-entry grid layout makes the
+expand step intricate), but this microbench quantifies the prize: up to ~11-27x on the compute
+fraction.

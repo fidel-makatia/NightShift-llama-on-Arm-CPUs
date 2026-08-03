@@ -25,15 +25,36 @@ footprint $\propto \sum_e b_e$; the precision *where compute actually happens* i
   more accurate at the same memory.** Free accuracy.
 - **(B) Iso-accuracy** — hold $\bar b \approx 2$, compress the cold tail: **RAM drops.**
 
+## The third axis: speed (added from a measured kernel finding)
+
+The original FGEQ pitch was footprint + accuracy. A microbench of the real `libggml` dot-products
+([`../kernels/iquant_results.txt`](../kernels/iquant_results.txt)) surfaced a **third payoff that
+comes free with the same config.** Per-weight decode-and-MAC cost, in-cache, one Neoverse-N2 core:
+
+| Quant | bits/weight | GFLOP/s (measured) | relative compute cost |
+|---|---|---|---|
+| iq1_s (what a 1-bit K3 must use) | 1.56 | 19.5 | **9.4× slower** |
+| q4_K (what a 4-bit expert uses) | 4.50 | 184.3 | 1× |
+
+i-quants decode through a 2048-entry **codebook gather** (no i8mm/SDOT/KleidiAI path); q4_K has a
+clean SIMD path. So the 1-bit quant that lets a trillion-param model *fit* is also ~9× slower to
+*decode*. Crucially, FGEQ's iso-footprint tiering — **hot experts at 4-bit (q4_K), cold at 1-bit
+(iq1_s)** — is exactly the assignment that routes the hot activation mass through the *fast* path.
+The same config that buys free accuracy also speeds up the compute that actually runs.
+
 ## Simulated results ([`fgeq_sim.py`](fgeq_sim.py))
 
-| Routing distribution | (A) iso-footprint precision | (B) iso-accuracy RAM |
-|---|---|---|
-| measured K2 (ExpertAtlas, 509-token sample) — Gini 0.32 | **2.59 bits** (vs 2.00) | **−18%** |
-| literature-typical skew (Zipf s=1) — Gini 0.80 | **3.67 bits** (vs 2.00) | **−32%** |
+| Routing distribution | (A) iso-footprint precision | (B) iso-accuracy RAM | (C) hot-path compute speedup |
+|---|---|---|---|
+| measured K2 (ExpertAtlas, 509-token sample) — Gini 0.32 | **2.59 bits** (vs 2.00) | **−18%** | **1.90×** |
+| literature-typical skew (Zipf s=1) — Gini 0.80 | **3.67 bits** (vs 2.00) | **−32%** | **4.91×** |
 
+One tiering, three wins: same RAM, higher effective precision, *and* the hot path decodes faster.
 The win scales with skew. Our 509-token sample under-measures it; larger traces and K3's 896
-experts should push toward the Zipf row.
+experts should push toward the Zipf row. **Honest bound:** (C) is the speedup on the *compute*
+fraction; K3 end-to-end is co-limited by compute and scattered-memory access (both ~same order,
+see kernel results), so the end-to-end gain is Amdahl-bounded by the memory roofline — this moves
+K3 from 2.2 toward a few tok/s, not to 30. It is a real lever, not a magic one.
 
 ## Where the "very high TPS" actually comes from (being precise)
 

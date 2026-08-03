@@ -1,0 +1,20 @@
+#2 — Cobalt 200 and the memory roofline
+
+Cobalt 200 (Arm v7 SKUs, *ps_v7 / *pls_v7): NOT available on this subscription.
+  az vm list-skus --location eastus2  -> no ps_v7/pls_v7
+  az vm list-skus --location eastus   -> no ps_v7/pls_v7
+This is a Microsoft Azure Sponsorship subscription, which cannot allocate preview/restricted
+SKUs. I could not rent a Cobalt 200 to measure, so #2 is answered analytically, anchored to a
+MEASURED bandwidth number rather than a spec sheet.
+
+STREAM Triad on our Cobalt 100 (E96ps_v6, Neoverse-N2), /tmp/stream.c, best of 12:
+  96 threads (both NUMA nodes) : 417.2 GB/s
+  48 threads (one NUMA node)   : 429.7 GB/s
+=> aggregate achievable memory bandwidth ~= 420 GB/s (higher than the ~200 GB/s per-node figure).
+
+Roofline (generation reads active weights once per token):
+  K3   (2.8T, ~104B active, iq1_s ~1.7 eff bits) ~= 22 GB/token -> 420/22  ~= 19 tok/s ceiling
+  Measured K3 single-stream: 2.2 tok/s  => ~8x below the bandwidth ceiling (compute co-limited).
+Cobalt 200 is reported at ~1.5-2x the memory bandwidth of Cobalt 100. Applied here that lifts the
+roofline to ~30-38 tok/s for K3 — but only if the compute bottleneck (see kernels/iquant_results)
+is also removed. Bandwidth alone is necessary, not sufficient.
