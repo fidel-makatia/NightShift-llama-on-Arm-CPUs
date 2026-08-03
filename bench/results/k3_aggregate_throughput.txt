@@ -1,0 +1,20 @@
+K3 (2.8T, UD-IQ1_S, 554 GB) — aggregate throughput sweep
+llama-server continuous batching, Azure Cobalt 100 (Neoverse-N2), 64 threads, CPU only.
+n_predict=64, temp 0, cache_prompt=false. Aggregate = sum(predicted tokens)/wall.
+
+concurrency=1   wall=  29.3s  total_tokens=64    AGGREGATE=  2.18 tok/s  per-stream=2.18 tok/s
+concurrency=2   wall=  38.1s  total_tokens=128   AGGREGATE=  3.36 tok/s  per-stream=1.68 tok/s
+concurrency=4   wall=  55.7s  total_tokens=256   AGGREGATE=  4.59 tok/s  per-stream=1.14 tok/s
+concurrency=8   wall=  97.2s  total_tokens=512   AGGREGATE=  5.26 tok/s  per-stream=0.65 tok/s
+
+Finding: aggregate throughput scales SUB-LINEARLY and saturates (+1.18 from 2->4 streams,
+only +0.67 from 4->8). This is MoE-specific: each stream's top-k router selects DIFFERENT
+experts per token, so concurrent streams collectively touch a much larger fraction of the
+896 experts than any one stream. Batching therefore does NOT amortize the weight read the
+way it would for a dense model. Aggregate ceiling on this box ~= 5.3 tok/s at 8 streams.
+
+Base single-stream (clean, no thrash, after fixing the resource leak): 2.21 tok/s generation
+(prompt eval 5.83-7.97 tok/s). Roofline: ~104B active params at IQ1_S (~1.7 eff. bits) reads
+~22 GB/token; at ~200 GB/s socket BW the bandwidth ceiling is ~9 tok/s. Measured 2.2 tok/s is
+~4x BELOW that ceiling => K3-on-CPU in this regime is COMPUTE-bound (i-quant dequant + MoE
+gather), not bandwidth-bound. That 4x is the reclaimable headroom, and it is a kernel problem.
