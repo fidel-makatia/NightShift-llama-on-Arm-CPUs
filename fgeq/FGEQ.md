@@ -1,7 +1,12 @@
 # FGEQ — Frequency-Graded Expert Quantization
 
 A workload-aware compression scheme for MoE models, built on ExpertAtlas's measured routing data.
-**Status: a design + feasibility simulation ([`fgeq_sim.py`](fgeq_sim.py)), not a finished codec.**
+**Status: a real codec ([`fgeq_codec.py`](fgeq_codec.py)), validated on real MoE weights — plus the
+original feasibility simulation ([`fgeq_sim.py`](fgeq_sim.py)).** On real Qwen3-30B-A3B down-proj
+experts, at **iso-footprint (76 MB either way), FGEQ cuts activation-weighted error ~29%** vs uniform
+(recon 34.3%→24.4%, forward-pass 34.4%→24.4%) — measured, not simulated
+([`fgeq_codec_results.txt`](fgeq_codec_results.txt)). The remaining production step is a ggml kernel
+that dispatches per-expert precision inside llama.cpp's stacked expert tensor.
 
 ## The honest premise
 

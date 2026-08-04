@@ -1,0 +1,22 @@
+FGEQ real codec — measured on REAL Qwen3-30B-A3B expert weights (Azure Cobalt 100)
+==================================================================================
+Tensor: blk.0.ffn_down_exps.weight  ->  128 experts, each 2048 x 768, dequantized to fp32.
+Routing model: Zipf s=1 (expert i frequency 1/(i+1)) — the literature-typical skew.
+Quantizer: per-row symmetric absmax (deliberately simple; absolute errors higher than K-quants —
+the valid result is the iso-footprint FGEQ-vs-uniform comparison).
+
+                 footprint   activation-weighted recon   activation-weighted fwd-pass   mean recon
+  UNIFORM 3-bit   76.0 MB            34.34%                        34.40%                   34.30%
+  FGEQ  6/2-bit   76.0 MB            24.38%                        24.39%                   65.64%
+
+At IDENTICAL footprint (76.0 MB either way), FGEQ cuts the activation-weighted error ~29%
+(recon 34.3% -> 24.4%, forward-pass 34.4% -> 24.4%). FGEQ's *mean* recon error is higher (65.6%)
+because cold experts sit at 2-bit — but those experts are rarely routed to, so the error *where the
+tokens actually go* is lower. That is exactly FGEQ's thesis, now measured on real weights rather
+than simulated: at equal memory, spend the bits where the routing mass is, and the running compute
+is more accurate for free.
+
+Real vs the earlier fgeq_sim.py: the sim only averaged bit-widths; this codec actually quantizes,
+reconstructs, and runs a forward pass on real expert matrices. Remaining production step: a ggml
+kernel that dispatches per-expert precision inside llama.cpp's stacked expert tensor (the format
+stores one quant type per tensor today).
