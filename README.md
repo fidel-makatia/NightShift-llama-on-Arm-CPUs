@@ -10,6 +10,11 @@ This repo is the Llama + compression/acceleration research track.
 > A 3B-active MoE hits **44 tok/s** on the same Arm CPU (#4); the real K3 wall is measured to be
 > **compression-vs-compute** (iq1_s decodes 27× slower than q4_K, #1); and FGEQ turns that into a
 > speed lever. Includes a verified comparison to WASTE and vLLM/DSpark.
+>
+> **Also new:** [**RAM-resident vs streaming — a measured K3 head-to-head**](WASTE-HEAD-TO-HEAD.md).
+> I built the WASTE 3-bit-VQ container from the 1.56 TB source and benchmarked it on the same Arm
+> server: **0.29 tok/s** (streaming) vs **2.2 tok/s** (our RAM-resident IQ1_S) — ~7.6× — and WASTE is
+> *slower* on our 660 GB server than on a 64 GB Mac, confirming the VQ-gather compute wall.
 
 ## Result so far: a flagship 400B Llama runs at 22 tok/s on an Arm CPU
 

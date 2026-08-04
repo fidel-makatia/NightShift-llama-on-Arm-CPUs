@@ -1,0 +1,37 @@
+WASTE vs RAM-resident — Kimi K3 (2.8T) on ONE Azure Cobalt 100 (E96ps_v6, 96-core Neoverse-N2, 660 GB)
+========================================================================================================
+Built the WASTE 3-bit-VQ container myself from the 1.56 TB native MXFP4 weights (converter had a
+codebook-base collision bug at the tail layers under multi-job; patched: advance next_base for every
+queued layer). Container = 982 GB (matches WASTE's published size). All runs CPU-only.
+
+APPROACH                                  CONFIG                              THROUGHPUT     HIT RATE
+------------------------------------------------------------------------------------------------------
+WASTE (3-bit VQ, 982 GB, NVMe-streamed)   default budget 80 GB (cold)         0.08 tok/s     57%
+WASTE (3-bit VQ, 982 GB, NVMe-streamed)   600 GB budget, warm (--learn)       0.26 tok/s     88%
+WASTE (3-bit VQ, 982 GB, NVMe-streamed)   450 GB budget, warm (--learn)       0.29 tok/s     90%   <-- best
+NightShift RAM-resident (IQ1_S, 554 GB)   fully in RAM, no streaming          2.2  tok/s     n/a   <-- 7.6x faster
+
+Reference points (reported by their authors, different hardware):
+  WASTE on 64 GB M5 Pro Mac (Apple Silicon)                                   0.45-0.62 tok/s
+  kimi-k3-in-c on 110 GB / 8 GB (4-bit stream)                                ~0.09 / ~0.03 tok/s
+
+FINDINGS
+1. RAM-RESIDENT WINS ~7.6x ON THE SAME SILICON. Holding the 554 GB IQ1_S model fully in RAM (2.2 tok/s)
+   beats streaming the 982 GB VQ container (0.29 tok/s) on the identical box. When you have server RAM,
+   fit-in-RAM beats stream-from-NVMe decisively.
+2. WASTE ON OUR 96-CORE / 660 GB ARM SERVER (0.29) IS SLOWER THAN ON A 64 GB M5 PRO MAC (0.45-0.62),
+   despite 10x the RAM and far more cores. At 90% cache hit the model is NOT I/O-bound anymore -> the
+   limiter is PER-CORE VQ-DECODE COMPUTE (3-bit residual-VQ codebook gather) plus memory latency, where
+   Apple Silicon's fast cores beat Neoverse-N2 efficiency cores. More RAM lifts hit rate; it cannot beat
+   the per-token compute/latency floor.
+3. THIS CONFIRMS THE #1 KERNEL FINDING. WASTE's 3-bit VQ is a codebook-gather scheme, the same class as
+   iq1_s (measured 27x slower/byte than q4_K). At 90% hit the experts ARE in RAM, yet throughput is still
+   ~0.3 tok/s because decoding them via VQ gather is the wall -- exactly the compute wall #1 quantified.
+4. THE TRADE-OFF, MEASURED: WASTE's 982 GB (3-bit VQ, higher quality) does not fit in 660 GB -> must
+   stream -> 0.29 tok/s. Our IQ1_S 554 GB (1.56-bit, lower quality) fits -> 2.2 tok/s. Quality vs fit vs
+   speed is a triangle; on a big-RAM Arm server the fit-in-RAM corner is the fast one.
+
+FAIRNESS NOTE: WASTE is engineered for machines that CANNOT hold the model (8-64 GB); streaming is its
+whole point and its strength there. On a 660 GB server the RAM-resident path is simply available and
+faster -- WASTE is the wrong tool for this much RAM, not a bad one. WASTE also produced correct, coherent
+K3 output on Arm (a working port), and the converter bug fix may be worth upstreaming.

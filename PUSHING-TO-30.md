@@ -77,12 +77,17 @@ Wiring MTP into the CPU speculative loop is implementation TODO (not done here).
 ## Where this sits vs the public K3 landscape (verified 2026-08)
 
 - **WASTE** ([sqliteai/waste](https://github.com/sqliteai/waste)) — NVMe expert-streaming + 3-bit
-  residual VQ (982 GB), **0.45–0.62 tok/s** on a 64 GB M5 Pro Mac. Targets machines that *can't* hold
-  the model, so it is storage-bound by design. (Its 3-bit VQ is codebook-gather — likely subject to
-  the same NEON compute wall measured in #1.)
+  residual VQ (982 GB). I built its container and **benchmarked it on our Arm server: 0.29 tok/s at
+  90% cache hit** — *slower* than its own 64 GB Mac number (0.45–0.62), confirming the codebook-gather
+  compute wall from #1. Full head-to-head: [WASTE-HEAD-TO-HEAD.md](WASTE-HEAD-TO-HEAD.md).
+- **kimi-k3-in-c** ([FareedKhan-dev/kimi-k3-in-c](https://github.com/FareedKhan-dev/kimi-k3-in-c)) —
+  176 KB C99, 4-bit NVMe expert-streaming. Author-reported **~0.09 tok/s @ 110 GB, ~0.03 @ 8 GB** —
+  same storage-bound streaming category.
 - **vLLM + DSpark** ([vLLM K3 blog](https://vllm.ai/blog/2026-07-27-k3)) — 111/118 → 331/**370 tok/s**
   (TP8/TP16), via a block-diffusion speculative head, on **16× NVIDIA GB300 GPUs**. Not Arm CPU; the
   blog describes no CPU/Arm64 backend.
+- **NightShift RAM-resident** — **2.2 tok/s** holding IQ1_S fully in RAM: ~7.6× the streaming engines
+  on the same Arm silicon, because it never pays the per-token NVMe + VQ-gather cost.
 - **NightShift (this work)** — runs the *full* K3 **RAM-resident on one Arm CPU node** at a stable
   2.2 tok/s (the RAM budget is what buys the ~7× over consumer streaming), and is the only one to
   **measure why CPU K3 is slow** (the iq1_s compute wall) and turn that into a compression-for-speed
