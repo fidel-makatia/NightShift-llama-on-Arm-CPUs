@@ -1,0 +1,18 @@
+[Unit]
+Description=NightShift local LLM server (llama.cpp, GPU-free, Arm)
+After=network.target
+
+[Service]
+Type=simple
+# One NUMA node's worth of threads is usually optimal for MoE generation on Cobalt-class parts.
+ExecStart=@SERVER@ -m @MODEL@ -t @THREADS@ -c 8192 --host 127.0.0.1 --port @PORT@ --jinja --alias nightshift
+Restart=on-failure
+RestartSec=5
+# resource hygiene for a shared server
+Nice=5
+OOMScoreAdjust=-200
+# lock the model to this box; the server binds to loopback only
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target
