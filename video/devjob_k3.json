@@ -1,5 +1,5 @@
 [
-  {"card": {"kicker": "Arm Create: AI Optimization Challenge 2026",
+  {"card": {"kicker": "NightShift — frontier AI on Arm CPUs",
             "title": "Kimi K3 (2.8T) on one Arm CPU",
             "title_size": 50,
             "subtitle": "I ran a 2.8-trillion-parameter model on a single Azure Cobalt 100 (Neoverse-N2) VM, no GPU — and measured exactly why big MoE models are slow on CPU. Every number here is from that machine.",
