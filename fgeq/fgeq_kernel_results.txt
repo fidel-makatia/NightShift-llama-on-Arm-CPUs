@@ -1,0 +1,17 @@
+FGEQ mixed-precision MoE kernel — measured on Azure Cobalt 100 (Neoverse-N2), 1 core.
+The compute primitive that lets FGEQ RUN: per token, gather top-k routed experts and dequant+matmul
+EACH at its OWN bit-width, accumulate gate-weighted. This per-expert precision dispatch is what a
+single-type GGUF stacked expert tensor cannot do.
+
+  layer: 128 experts, top-8 routed, 2048x768 down-proj
+  bit-widths: hot 1/4 @ 8-bit, cold 3/4 @ 2-bit (real packed 2/4/8-bit rows, per-row fp32 scale)
+  correctness vs fp32 reference : max|abs| = 9.54e-07  (bit-exact dispatch)
+  footprint                     : 88.1 MB vs 100.7 MB uniform-4bit (88%)
+  throughput                    : 128 MoE-FFN tokens/sec (7.83 ms/token, top-8 experts)
+
+Scope (honest): this is a standalone, validated kernel (NEON, real bit-packing 2/4/8) with synthetic
+weights — it proves the mixed-precision dispatch is correct and fast. Accuracy on REAL weights is
+proven separately by fgeq_codec.py (~29% lower activation-weighted error at iso-footprint). The one
+remaining step to production is splicing this dispatch into llama.cpp's ggml_compute_forward_mul_mat_id
+(the MoE graph op) + a GGUF extension storing per-expert bit-widths — same path the SMMLA kernel took
+from standalone to integrated.

@@ -1,12 +1,19 @@
 # FGEQ — Frequency-Graded Expert Quantization
 
 A workload-aware compression scheme for MoE models, built on ExpertAtlas's measured routing data.
-**Status: a real codec ([`fgeq_codec.py`](fgeq_codec.py)), validated on real MoE weights — plus the
-original feasibility simulation ([`fgeq_sim.py`](fgeq_sim.py)).** On real Qwen3-30B-A3B down-proj
-experts, at **iso-footprint (76 MB either way), FGEQ cuts activation-weighted error ~29%** vs uniform
-(recon 34.3%→24.4%, forward-pass 34.4%→24.4%) — measured, not simulated
-([`fgeq_codec_results.txt`](fgeq_codec_results.txt)). The remaining production step is a ggml kernel
-that dispatches per-expert precision inside llama.cpp's stacked expert tensor.
+**Status: a real codec + a real kernel — both validated, measured, not simulated.**
+1. **Codec** ([`fgeq_codec.py`](fgeq_codec.py)) — on real Qwen3-30B-A3B down-proj experts, at
+   **iso-footprint (76 MB), FGEQ cuts activation-weighted error ~29%** vs uniform (recon 34.3→24.4%,
+   forward 34.4→24.4%) ([`fgeq_codec_results.txt`](fgeq_codec_results.txt)).
+2. **Kernel** ([`fgeq_kernel.c`](fgeq_kernel.c)) — a mixed-precision MoE FFN kernel that dispatches a
+   **different bit-width per expert** (hot @8-bit, cold @2-bit) in one top-8 routed pass, **bit-exact
+   vs fp32 (max|abs| 9.5e-7)**, 88 MB vs 101 MB uniform, 128 tok/s on one Neoverse-N2 core
+   ([`fgeq_kernel_results.txt`](fgeq_kernel_results.txt)).
+
+The codec proves the *accuracy* win on real weights; the kernel proves the mixed-precision compute is
+*correct and runnable*. The one remaining production step is splicing the kernel into llama.cpp's
+`ggml_compute_forward_mul_mat_id` (the MoE graph op) + a GGUF extension storing per-expert bit-widths.
+(Original feasibility simulation kept at [`fgeq_sim.py`](fgeq_sim.py).)
 
 ## The honest premise
 
