@@ -16,7 +16,8 @@ reproducible builder, not a prebuilt blob.
 | Model | a real Llama (default **Llama-3.2-3B Q4_0**) baked to `/opt/nightshift/models/llama.gguf` — works offline on first boot |
 | Agent | `nsh` in `PATH` — natural-language ops, safe-by-default, audited |
 | Identity | `/etc/os-release` = *NightShift OS*, hostname `nightshift`, agentic MOTD |
-| Services | `nightshift-llm` (the model) + `nightshift-boot-health` (agent writes a live health line into the MOTD at boot) |
+| Services | `nightshift-llm` (the model) · `nightshift-web` (browser console :8088) · `nightshift-boot-health` (agent writes a live health line into the MOTD at boot) |
+| GUI | web console at `http://<host>:8088` — chat the OS, watch diagnostics stream live, approve/deny state changes in-browser, live disk/mem/load strip |
 | Login | interactive shells are greeted and told how to drive the box in English |
 
 ## Build it

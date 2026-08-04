@@ -24,6 +24,7 @@ COMPONENTS="${COMPONENTS:-main,universe}"
 MODEL_SRC="${MODEL_SRC:-/data/nsos-assets/Llama-3.2-3B-Instruct-Q4_0.gguf}"
 LLAMA_BIN_DIR="${LLAMA_BIN_DIR:-/data/llama-k3/build/bin}"
 NSH_SRC="${NSH_SRC:-$HERE/../nsh.py}"
+WEB_SRC="${WEB_SRC:-$HERE/../nightshift-web.py}"
 VERSION="0.1"
 
 say(){ printf "\033[1;36m[build]\033[0m %s\n" "$*"; }
@@ -42,6 +43,7 @@ install -m0755 "$LLAMA_BIN_DIR/llama-server" "$ROOT/opt/nightshift/bin/llama-ser
 cp -a "$LLAMA_BIN_DIR/"lib*.so* "$ROOT/opt/nightshift/lib/"
 install -m0644 "$MODEL_SRC" "$ROOT/opt/nightshift/models/llama.gguf"
 install -D -m0755 "$NSH_SRC" "$ROOT/usr/local/bin/nsh"
+install -D -m0755 "$WEB_SRC" "$ROOT/usr/local/bin/nightshift-web"
 echo "/opt/nightshift/lib" > "$ROOT/etc/ld.so.conf.d/nightshift.conf"
 
 say "3/6  OS identity + branding"
@@ -64,6 +66,8 @@ cat > "$ROOT/etc/motd" <<'EOF'
       nsh "audit listening ports and flag anything unexpected"
       nsh                       # interactive
 
+  ...or open the web console:   http://<this-host>:8088
+
   Everything stays on this box. Actions are gated and audited.
 EOF
 
@@ -76,6 +80,21 @@ After=network.target
 Environment=LD_LIBRARY_PATH=/opt/nightshift/lib
 ExecStart=/opt/nightshift/bin/llama-server -m /opt/nightshift/models/llama.gguf \
   -t 4 -c 8192 --host 127.0.0.1 --port 8080 --jinja --alias nightshift
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# the browser console — operate the box in natural language from a web GUI
+cat > "$ROOT/etc/systemd/system/nightshift-web.service" <<'EOF'
+[Unit]
+Description=NightShift OS web console (agentic GUI)
+After=nightshift-llm.service
+Wants=nightshift-llm.service
+[Service]
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /usr/local/bin/nightshift-web
 Restart=on-failure
 RestartSec=5
 [Install]
@@ -116,9 +135,11 @@ fi
 EOF
 
 say "5/6  enable services in the image"
-chroot "$ROOT" systemctl enable nightshift-llm.service nightshift-boot-health.service >/dev/null 2>&1 || {
-  ln -sf /etc/systemd/system/nightshift-llm.service "$ROOT/etc/systemd/system/multi-user.target.wants/nightshift-llm.service"
-  ln -sf /etc/systemd/system/nightshift-boot-health.service "$ROOT/etc/systemd/system/multi-user.target.wants/nightshift-boot-health.service"
+chroot "$ROOT" systemctl enable nightshift-llm.service nightshift-web.service nightshift-boot-health.service >/dev/null 2>&1 || {
+  W="$ROOT/etc/systemd/system/multi-user.target.wants"; mkdir -p "$W"
+  for u in nightshift-llm nightshift-web nightshift-boot-health; do
+    ln -sf "/etc/systemd/system/$u.service" "$W/$u.service"
+  done
 }
 # root auto-login on the container console (so `nspawn --boot` drops you in)
 mkdir -p "$ROOT/etc/systemd/system/console-getty.service.d"
